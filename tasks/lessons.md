@@ -15,6 +15,20 @@ installed binary. **Verify CLI flags against the actual `claude` binary on
 the target machine before assuming the agent code works.** A 60-second smoke
 test would have caught this.
 
+**Update 2026-05-05 01:42 (audit):** the smoke test was added at
+`tests/test_claude_agent.py` (gated on `shutil.which('claude')`) and run
+against Claude Code v2.1.128 on Linux. *The flag combination was correct
+as written* — three real turns parse cleanly into `text` + `session_id`
++ `done` events. Lesson stands for the next "ship before testing" decision,
+but on this specific question the scaffold author was lucky.
+
+**Why:** the lesson predicts breakage that didn't happen this time. Don't
+remove it — the next blind-flag decision may not be lucky. **How to apply:**
+when you write code against a CLI you can't currently run, mark the call
+sites with `# UNVERIFIED — see lessons.md` and add a guarded test before
+you ship. We just did that at `tests/test_claude_agent.py`; copy that
+shape next time.
+
 ## Architecture
 
 ### Per-message subprocess > long-running TTY

@@ -251,6 +251,13 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-05 01:42 — q04: tests/test_claude_agent.py (3 tests) green
+  against real `claude` v2.1.128 on Linux. **The audit's P0 blocker is
+  partially resolved:** flag combo `-p --output-format stream-json
+  --input-format stream-json --verbose` works as written; `_parse_event`
+  decodes `text + session_id + done` correctly. Windows verification
+  still pending (the same test will execute there once on the target).
+  Total: 54 tests passing in 15.16s.
 - 2026-05-05 01:38 — q03: tests/test_chat_ws.py (7 tests) green;
   WebSocket protocol order (`user_message → assistant_start → delta+ →
   done`), attachments persisted, delta-concat matches store content,

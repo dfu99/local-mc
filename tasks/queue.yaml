@@ -39,15 +39,19 @@ queue:
     done stats, artifact-diff picks up newly-written file, ping/pong, error on bad
     type); pytest -q tests/ → 51 passed
 - id: q04
-  status: pending
+  status: completed
   title: tests/test_claude_agent.py guarded by shutil.which('claude')
   why: Audit P0 blocker. Even skipped on this machine, it'll execute on Windows and
     tell us what _build_argv breaks.
   acceptance: 'If claude is on PATH: one real turn produces text + done events. If
     not: pytest skips, doesn''t fail.'
   est_minutes: 30
+  started: 2026-05-05 01:34
+  completed: 2026-05-05 01:35
+  commits: 16
+  notes: Recovered completion from done marker after stale session.
 - id: q05
-  status: pending
+  status: in_progress
   title: .github/workflows/test.yml — Linux + Windows matrix
   why: Audit P1. Catches Windows-specific regressions on every PR; deploy target is
     Windows.
@@ -56,6 +60,7 @@ queue:
   est_minutes: 30
   depends_on:
   - q03
+  started: 2026-05-05 01:35
 - id: q06
   status: pending
   title: Drop the dead watchfiles dep + thread settings.artifact_globs through server.py
