@@ -22,9 +22,10 @@ queue:
   - q01
   started: 2026-05-05 01:28
   completed: 2026-05-05 01:35
-  result: 21 server tests added; pytest -q tests/ → 44 passed (10 projects + 13 store + 21 server)
+  result: 21 server tests added; pytest -q tests/ → 44 passed (10 projects + 13 store
+    + 21 server)
 - id: q03
-  status: pending
+  status: completed
   title: 'tests/test_chat_ws.py: WebSocket EchoAgent flow'
   why: Audit ship-list step 7. The hottest code path; today only verified by hand.
   acceptance: Asserts user_message → assistant_start → ≥1 delta → done in order, with
@@ -32,6 +33,11 @@ queue:
   est_minutes: 30
   depends_on:
   - q01
+  started: 2026-05-05 01:32
+  completed: 2026-05-05 01:38
+  result: 7 WS tests added (protocol order, attachments persist, delta/store concat,
+    done stats, artifact-diff picks up newly-written file, ping/pong, error on bad
+    type); pytest -q tests/ → 51 passed
 - id: q04
   status: pending
   title: tests/test_claude_agent.py guarded by shutil.which('claude')

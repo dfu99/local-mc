@@ -251,6 +251,11 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-05 01:38 — q03: tests/test_chat_ws.py (7 tests) green;
+  WebSocket protocol order (`user_message → assistant_start → delta+ →
+  done`), attachments persisted, delta-concat matches store content,
+  artifact-diff picks up files written between assistant_start and done,
+  ping/pong, error on bad message type. Total: 51 tests passing.
 - 2026-05-05 01:35 — q02: tests/test_server.py (21 tests) green;
   REST + /api/files sandbox (200/403/404 cases incl. symlink-pointing-out,
   POSIX-only) + upload happy/413 cap + safe-filename strip. Total
