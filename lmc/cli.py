@@ -7,6 +7,8 @@ Subcommands:
     lmc list
     lmc settings [--get KEY | --set KEY=VAL ...]
     lmc init                              create config dir + write defaults
+    lmc send <project> "msg"              send a message to the latest
+                                          (or new) session and stream events
 
 The CLI is intentionally narrow. The web UI is the primary interface; this
 exists so a fresh-clone setup can register projects and start the server in
@@ -110,6 +112,75 @@ def _cmd_settings(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_send(args: argparse.Namespace) -> int:
+    """Send a message to a project's latest session (creating one if needed).
+
+    Streams the agent's text deltas to stdout, then prints a final summary.
+    Useful for scripted workflows — mirrors `mc send` from the original
+    Mission Control. The chat input in the browser is the primary surface;
+    this is for automation.
+    """
+    import asyncio
+
+    from .config import load_settings
+    from .sessions import make_agent
+    from .store import Store
+
+    paths = get_paths()
+    paths.ensure()
+    settings = load_settings(paths)
+
+    reg = Registry(paths)
+    proj = reg.get(args.project)
+    if proj is None:
+        print(f"error: unknown project '{args.project}'", file=sys.stderr)
+        return 1
+    if not proj.exists_on_disk():
+        print(f"error: project path missing: {proj.path}", file=sys.stderr)
+        return 1
+
+    store = Store(paths=paths)
+    sess = store.latest_session(args.project) or store.create_session(args.project)
+    store.add_message(sess.id, "user", args.message)
+
+    agent = make_agent(settings)
+
+    async def _run() -> int:
+        msg = store.add_message(sess.id, "assistant", "")
+        last_session_id = sess.claude_session_id
+        async for ev in agent.stream(
+            args.message,
+            cwd=proj.path,
+            claude_session_id=last_session_id,
+            attachments=None,
+        ):
+            if ev.type == "text":
+                store.append_to_message(msg.id, ev.data["text"])
+                if not args.quiet:
+                    print(ev.data["text"], end="", flush=True)
+            elif ev.type == "session_id":
+                last_session_id = ev.data["session_id"]
+                store.update_session(sess.id, claude_session_id=last_session_id)
+            elif ev.type == "error":
+                print(
+                    f"\n[error] {ev.data.get('message', 'agent error')}",
+                    file=sys.stderr,
+                )
+                return 2
+            elif ev.type == "done":
+                if not args.quiet:
+                    print()  # newline after streaming text
+                stats = ev.data
+                print(
+                    f"[done] session={sess.id[:8]} "
+                    f"duration_ms={stats.get('duration_ms')} "
+                    f"cost_usd={stats.get('total_cost_usd')}"
+                )
+        return 0
+
+    return asyncio.run(_run())
+
+
 def _cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn  # noqa: F401
@@ -190,6 +261,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="set KEY=VAL (repeat to set multiple)",
     )
     sp.set_defaults(func=_cmd_settings)
+
+    sp = sub.add_parser(
+        "send",
+        help="send a message to a project's latest session (or create one)",
+    )
+    sp.add_argument("project", help="registered project name")
+    sp.add_argument("message", help="prompt text")
+    sp.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress streaming text, only print the [done] line",
+    )
+    sp.set_defaults(func=_cmd_send)
 
     return p
 

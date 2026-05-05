@@ -97,8 +97,8 @@ queue:
   completed: 2026-05-05 01:55
   result: 'web/{index.html,app.js,style.css} → lmc/web/{...}; server.py uses Path(__file__).parent
     / "web"; pyproject.toml package-data: lmc = ["web/*", "web/**/*"]. Fresh wheel
-    bundles lmc/web/{index.html,app.js,style.css} (verified via python -m zipfile -l).
-    GET / serves the rendered index.html through TestClient. Suite still 55 passing.'
+    bundles lmc/web/{index.html,app.js,style.css} (verified via python -m zipfile
+    -l). GET / serves the rendered index.html through TestClient. Suite still 55 passing.'
 - id: q08
   status: completed
   title: scripts/install.ps1 — Windows install script
@@ -114,7 +114,7 @@ queue:
     by default since Win10 1809), verifies the shim resolves. Plus scripts/install.sh
     twin for POSIX users without pipx (~/.local/lmc-venv + ~/.local/bin/lmc shim).
 - id: q09
-  status: in_progress
+  status: completed
   title: lmc send <project> "msg" CLI subcommand
   why: Smallest piece of v0.2. Mirrors `mc send` and unblocks scripted workflows on
     the new machine.
@@ -124,14 +124,20 @@ queue:
   depends_on:
   - q03
   started: 2026-05-05 01:41
+  completed: 2026-05-05 02:02
+  result: lmc/cli.py adds `_cmd_send` (asyncio.run on agent.stream, latest-or-new session,
+    streams text to stdout, [done] line); --quiet suppresses streaming. tests/test_cli_send.py
+    has 6 cases (echo round-trip, --quiet, unknown project → 1, missing path → 1,
+    persists to SQLite, subsequent calls reuse latest session). Suite total now 61.
 - id: q10
-  status: pending
+  status: in_progress
   title: GET /status — minimal status panel HTML
   why: v0.2.0 milestone. Even read-only, it's the visible payoff for switching from
     tmux.
   acceptance: /status returns HTML listing each project + most recent session timestamp;
     lists projects with idle > 1h in red.
   est_minutes: 60
+  started: 2026-05-05 01:42
 - id: q11
   status: pending
   title: WebSocket cancel + auto-reconnect
