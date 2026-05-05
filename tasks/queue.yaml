@@ -1,0 +1,45 @@
+# Task queue for autonomous runs.
+# Pull the top pending item each session; append new items at the bottom.
+
+queue:
+
+  - id: q-001
+    status: completed
+    title: "Write pytest suite for all v0.1 core modules"
+    completed_date: "2026-05-05"
+
+  - id: q-002
+    status: pending
+    title: "Windows installer script (scripts/install.ps1)"
+    detail: >
+      PowerShell script: create venv at %LOCALAPPDATA%\lmc-venv, pip-install
+      the package, drop a lmc.cmd shim in %LOCALAPPDATA%\lmc-venv\Scripts\.
+      Update docs/migration.md with Windows path notes and console encoding
+      (chcp 65001 / PYTHONIOENCODING=utf-8).
+    priority: high
+
+  - id: q-003
+    status: pending
+    title: "Linux/macOS install script (scripts/install.sh)"
+    detail: >
+      Bash script: create venv at ~/.local/lmc-venv, pip-install package,
+      drop lmc shim at ~/.local/bin/lmc, print next-step instructions.
+    priority: medium
+
+  - id: q-004
+    status: pending
+    title: "lmc send CLI subcommand"
+    detail: >
+      POST to active session for project via REST API; add 'send' subcommand
+      to lmc/cli.py. Parity with 'mc send <proj> "msg"'. Include --session
+      flag to target a specific session id.
+    priority: medium
+
+  - id: q-005
+    status: pending
+    title: "Status panel SSE endpoint (/api/status)"
+    detail: >
+      Server-Sent Events endpoint returning project health summary: active
+      sessions, last activity time, latest artifact filename. Web UI polls
+      or streams this for the status sidebar tab.
+    priority: medium

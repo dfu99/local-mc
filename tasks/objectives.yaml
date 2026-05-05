@@ -8,24 +8,28 @@
 #   - metrics: extract all numbers (accuracy, loss, counts, timings)
 #   - conclusions: 1-2 sentences explaining what the result means
 
-objectives: []
+objectives:
 
-# Example entry (uncomment and fill):
-#  - id: obj-001
-#    status: completed        # completed | in-progress | planned
-#    statement: "Measure structural backprop accuracy vs frozen baseline at width 64"
-#    methodology: >
-#      Trained CorticalNN with structural gradient routing vs frozen bio layers
-#      on MNIST for 10 epochs at width=64, depth=3.
-#    metrics:
-#      structural_accuracy: 93.6
-#      frozen_accuracy: 93.0
-#      improvement: 0.6
-#    figures:
-#      - results/structural_vs_frozen_w64.png
-#    conclusions: >
-#      Structural weights provide a modest +0.6% improvement at width 64.
-#      The gap widens with network width, suggesting structural routing
-#      matters more in larger networks.
-#    connects_to: obj-002
-#    completed_date: "2026-03-09"
+  - id: obj-001
+    status: completed
+    statement: "Build passing pytest suite for v0.1 scaffold covering all core modules"
+    methodology: >
+      Wrote 74 unit + integration tests across five modules (artifacts, projects,
+      store, sessions, server). Used pytest-asyncio for EchoAgent stream tests and
+      Starlette TestClient for REST and WebSocket round-trip smoke tests.
+      Verified artifact surfacing logic: file written after snapshot appears in
+      done.artifacts on the same WS turn.
+    metrics:
+      total_tests: 74
+      passed: 74
+      failed: 0
+      test_files: 5
+      runtime_seconds: 2.24
+      modules_covered: 5
+    figures:
+      - figures/2026-05-05-test-coverage.png
+    conclusions: >
+      All 74 tests pass in 2.24 s on first run. The EchoAgent WebSocket
+      round-trip and artifact diff logic are verified end-to-end; the project
+      is now smoke-test green and ready for v0.2 feature work.
+    completed_date: "2026-05-05"
