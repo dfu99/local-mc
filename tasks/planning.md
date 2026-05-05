@@ -251,6 +251,15 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-05 01:50 — q06: dropped `watchfiles` dep (was unused) and
+  threaded `Settings.artifact_globs` through both `snapshot()` and
+  `diff()` in `lmc/server.py`. New test pins it: set globs to
+  `['figures/*.png']`, plant a `.png` and a `.csv`, only the `.png`
+  surfaces in the `done` event. Suite: 55 passing.
+- 2026-05-05 01:46 — q05: `.github/workflows/test.yml` written —
+  3×3 matrix (ubuntu+windows+macos × py3.10/3.11/3.12) plus a
+  `build-wheel` job that grep-asserts `web/{index.html,app.js,style.css}`
+  in the wheel. Real-`claude` test cleanly skips in CI.
 - 2026-05-05 01:42 — q04: tests/test_claude_agent.py (3 tests) green
   against real `claude` v2.1.128 on Linux. **The audit's P0 blocker is
   partially resolved:** flag combo `-p --output-format stream-json

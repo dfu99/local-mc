@@ -47,11 +47,16 @@ queue:
     not: pytest skips, doesn''t fail.'
   est_minutes: 30
   started: 2026-05-05 01:34
-  completed: 2026-05-05 01:35
-  commits: 16
-  notes: Recovered completion from done marker after stale session.
+  completed: 2026-05-05 01:42
+  commits: 2e74900
+  result: 3 real-claude tests passing on Linux against /home/dan/.local/bin/claude
+    v2.1.128. Flag combo `-p --output-format stream-json --input-format stream-json
+    --verbose` is valid; _parse_event decodes text+session_id+done. Windows verification
+    pending — module-level skipif means the test will execute on the Windows target
+    once the suite runs there.
+  windows_status: still_unverified
 - id: q05
-  status: in_progress
+  status: completed
   title: .github/workflows/test.yml — Linux + Windows matrix
   why: Audit P1. Catches Windows-specific regressions on every PR; deploy target is
     Windows.
@@ -61,22 +66,34 @@ queue:
   depends_on:
   - q03
   started: 2026-05-05 01:35
+  completed: 2026-05-05 01:46
+  result: .github/workflows/test.yml writes a 3x3 matrix (ubuntu-latest, windows-latest,
+    macos-latest × py3.10, 3.11, 3.12) plus a build-wheel job that verifies web/ is
+    bundled. Real-claude test cleanly skips in CI; cap-tests + sandbox tests run everywhere.
 - id: q06
-  status: pending
+  status: completed
   title: Drop the dead watchfiles dep + thread settings.artifact_globs through server.py
   why: Audit Drop list. Reduces audit surface and stops Settings.artifact_globs from
     being a lie.
   acceptance: watchfiles removed from pyproject.toml/requirements.txt; server.py:329
     passes globs from settings.
   est_minutes: 15
+  started: 2026-05-05 01:36
+  completed: 2026-05-05 01:50
+  result: 'pyproject.toml + requirements.txt: watchfiles removed. server.py: snapshot()
+    and diff() now both receive settings.artifact_globs. Pinned-down with a new test
+    test_settings_artifact_globs_filter_done_artifacts that sets globs=[''figures/*.png''],
+    plants both a .png (matches) and a .csv (does not), and asserts only the .png surfaces
+    in the done event.'
 - id: q07
-  status: pending
+  status: in_progress
   title: Move web/ inside the package as lmc/web/, update create_app web_dir resolution
   why: Audit Drop list. Replaces the `..`-escaping package-data pattern with something
     that's portable across Linux/Windows wheel builds.
   acceptance: python -m build --wheel produces a wheel with lmc/web/{index.html,app.js,style.css};
     server resolves it via importlib.resources or __file__.
   est_minutes: 30
+  started: 2026-05-05 01:38
 - id: q08
   status: pending
   title: scripts/install.ps1 — Windows install script

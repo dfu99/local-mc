@@ -326,7 +326,9 @@ def create_app(
                     }
                 )
 
-                snap = artifacts_mod.snapshot(proj.path)
+                snap = artifacts_mod.snapshot(
+                    proj.path, globs=resolved_settings.artifact_globs
+                )
 
                 async for ev in _run_turn(
                     agent,
@@ -360,7 +362,11 @@ def create_app(
                     elif ev.type == "done":
                         new_artifacts = [
                             a.to_dict()
-                            for a in artifacts_mod.diff(proj.path, snap)
+                            for a in artifacts_mod.diff(
+                                proj.path,
+                                snap,
+                                globs=resolved_settings.artifact_globs,
+                            )
                         ]
                         store.set_message_artifacts(assistant_msg.id, new_artifacts)
                         await ws.send_json(

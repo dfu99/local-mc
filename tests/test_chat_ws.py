@@ -141,3 +141,36 @@ def test_unknown_event_type_returns_error(client: TestClient, project_dir: Path)
         ev = ws.receive_json()
         assert ev["type"] == "error"
         assert "expected" in ev["message"]
+
+
+def test_settings_artifact_globs_filter_done_artifacts(
+    project_dir: Path, lmc_paths
+):
+    """Confirms `Settings.artifact_globs` is plumbed through to the WS turn.
+
+    Before q06 the server called `snapshot(proj.path)` and `diff(proj.path,
+    snap)` without passing `settings.artifact_globs` — meaning the user
+    setting was silently ignored. Pin the regression: set globs to match
+    only `figures/*.png` and assert a `.csv` plant doesn't surface.
+    """
+    from fastapi.testclient import TestClient
+    from lmc.config import Settings
+    from lmc.server import create_app
+
+    settings = Settings(agent="echo", artifact_globs=["figures/*.png"])
+    app = create_app(paths=lmc_paths, settings=settings)
+    with TestClient(app) as client:
+        sid = _create_session(client, project_dir)
+        (project_dir / "figures").mkdir()
+        with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
+            ws.send_json({"type": "message", "text": "go"})
+            ws.receive_json()  # user_message
+            ws.receive_json()  # assistant_start
+            (project_dir / "figures" / "loss.png").write_bytes(b"\x89PNG")
+            (project_dir / "ignore.csv").write_text("a,b\n1,2\n")
+            rest = _drain(ws)
+
+        done = next(e for e in rest if e["type"] == "done")
+        rels = [a["rel_path"] for a in done["artifacts"]]
+        assert any(r.endswith("loss.png") for r in rels)
+        assert not any(r.endswith("ignore.csv") for r in rels)
