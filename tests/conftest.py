@@ -9,9 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 from lmc.config import Paths, Settings
 from lmc.projects import Registry
+from lmc.server import create_app
 from lmc.store import Store
 
 
@@ -45,3 +47,16 @@ def registry(lmc_paths: Paths) -> Registry:
 @pytest.fixture
 def store(lmc_paths: Paths) -> Store:
     return Store(paths=lmc_paths)
+
+
+@pytest.fixture
+def app(lmc_paths: Paths, lmc_settings: Settings):
+    """FastAPI app wired against the temp Paths + echo Settings."""
+    return create_app(paths=lmc_paths, settings=lmc_settings)
+
+
+@pytest.fixture
+def client(app):
+    """Sync TestClient — covers REST + sandbox flows. WS lives in test_chat_ws.py."""
+    with TestClient(app) as c:
+        yield c

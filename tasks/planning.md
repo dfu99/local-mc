@@ -251,6 +251,10 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-05 01:35 — q02: tests/test_server.py (21 tests) green;
+  REST + /api/files sandbox (200/403/404 cases incl. symlink-pointing-out,
+  POSIX-only) + upload happy/413 cap + safe-filename strip. Total
+  pytest suite: 44 passing in 2.84s.
 - 2026-05-05 01:30 — q01: tests/test_projects.py (10) + tests/test_store.py
   (13) green; covers Registry CRUD + Store streaming append (100-delta).
 - 2026-05-05 01:22 — Audit (`tasks/audit-2026-05-05.md`,
