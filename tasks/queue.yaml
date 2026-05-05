@@ -83,10 +83,10 @@ queue:
   result: 'pyproject.toml + requirements.txt: watchfiles removed. server.py: snapshot()
     and diff() now both receive settings.artifact_globs. Pinned-down with a new test
     test_settings_artifact_globs_filter_done_artifacts that sets globs=[''figures/*.png''],
-    plants both a .png (matches) and a .csv (does not), and asserts only the .png surfaces
-    in the done event.'
+    plants both a .png (matches) and a .csv (does not), and asserts only the .png
+    surfaces in the done event.'
 - id: q07
-  status: in_progress
+  status: completed
   title: Move web/ inside the package as lmc/web/, update create_app web_dir resolution
   why: Audit Drop list. Replaces the `..`-escaping package-data pattern with something
     that's portable across Linux/Windows wheel builds.
@@ -94,16 +94,27 @@ queue:
     server resolves it via importlib.resources or __file__.
   est_minutes: 30
   started: 2026-05-05 01:38
+  completed: 2026-05-05 01:55
+  result: 'web/{index.html,app.js,style.css} → lmc/web/{...}; server.py uses Path(__file__).parent
+    / "web"; pyproject.toml package-data: lmc = ["web/*", "web/**/*"]. Fresh wheel
+    bundles lmc/web/{index.html,app.js,style.css} (verified via python -m zipfile -l).
+    GET / serves the rendered index.html through TestClient. Suite still 55 passing.'
 - id: q08
-  status: pending
+  status: completed
   title: scripts/install.ps1 — Windows install script
   why: Audit P1. Deploy target is Windows; pipx may not be present on locked-down
     work machines.
   acceptance: PS1 creates venv under %LOCALAPPDATA%\lmc-venv, installs ., drops lmc.cmd
     shim, prints next steps.
   est_minutes: 30
+  started: 2026-05-05 01:39
+  completed: 2026-05-05 01:58
+  result: scripts/install.ps1 (Windows) creates venv at %LOCALAPPDATA%\lmc-venv, runs
+    pip install ., drops lmc.cmd in %LOCALAPPDATA%\Microsoft\WindowsApps (on PATH
+    by default since Win10 1809), verifies the shim resolves. Plus scripts/install.sh
+    twin for POSIX users without pipx (~/.local/lmc-venv + ~/.local/bin/lmc shim).
 - id: q09
-  status: pending
+  status: in_progress
   title: lmc send <project> "msg" CLI subcommand
   why: Smallest piece of v0.2. Mirrors `mc send` and unblocks scripted workflows on
     the new machine.
@@ -112,6 +123,7 @@ queue:
   est_minutes: 45
   depends_on:
   - q03
+  started: 2026-05-05 01:41
 - id: q10
   status: pending
   title: GET /status — minimal status panel HTML

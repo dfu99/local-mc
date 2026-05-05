@@ -93,7 +93,10 @@ def create_app(
     store = Store(paths=resolved_paths)
 
     if web_dir is None:
-        web_dir = Path(__file__).resolve().parent.parent / "web"
+        # Bundled with the package: lmc/web/. The legacy top-level web/
+        # directory at the repo root is no longer used (q07 — Windows
+        # wheel portability).
+        web_dir = Path(__file__).resolve().parent / "web"
 
     app = FastAPI(title="local-mc", version="0.1.0")
 

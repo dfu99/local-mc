@@ -32,7 +32,7 @@ lmc = "lmc.cli:main"
 include = ["lmc*"]
 
 [tool.setuptools.package-data]
-lmc = ["../web/**/*"]
+lmc = ["web/*", "web/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
