@@ -1,0 +1,19 @@
+# local-mc project registry
+# Copy to ~/.config/lmc/projects.yaml (or project-local ./projects.yaml)
+# and edit paths to match your machine.
+
+projects:
+  - name: backend-api
+    path: /home/you/code/backend-api
+    tags: [product, web]
+    description: "Customer-facing REST API"
+
+  - name: data-pipeline
+    path: /home/you/code/data-pipeline
+    tags: [research, gpu]
+    description: "Nightly ETL + model training"
+
+  - name: scratch
+    path: /home/you/code/scratch
+    tags: [admin]
+    description: "Throwaway experiments"

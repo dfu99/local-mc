@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-mc"
+version = "0.1.0"
+description = "Local Mission Control — a chat-style desktop UI for Claude Code that keeps every byte on your machine."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Dan Fu" }]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "watchfiles>=0.21",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+lmc = "lmc.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lmc*"]
+
+[tool.setuptools.package-data]
+lmc = ["../web/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

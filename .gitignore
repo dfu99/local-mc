@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Local mission control state (never commit user data)
+state/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+.lmc/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Local config overrides
+config.local.yaml
+projects.local.yaml

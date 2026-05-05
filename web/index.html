@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>local-mc</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='22'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <aside id="sidebar">
+    <header class="sidebar-header">
+      <div class="brand">local-mc</div>
+      <button id="add-project" class="icon-btn" title="Add project">+</button>
+    </header>
+    <nav id="project-list" aria-label="Projects"></nav>
+    <footer class="sidebar-footer">
+      <span id="agent-mode" class="muted"></span>
+      <span id="connection-state" class="muted">disconnected</span>
+    </footer>
+  </aside>
+
+  <main id="main">
+    <header id="chat-header">
+      <div id="project-title">
+        <span class="placeholder">Select or add a project to begin</span>
+      </div>
+      <div class="header-actions">
+        <button id="new-session" class="text-btn" hidden>New session</button>
+        <select id="session-picker" hidden></select>
+      </div>
+    </header>
+
+    <section id="messages" aria-live="polite"></section>
+
+    <form id="composer" autocomplete="off">
+      <div id="attachment-tray" class="hidden"></div>
+      <div class="composer-row">
+        <label class="attach-btn" title="Attach files">
+          📎
+          <input type="file" id="file-input" multiple hidden />
+        </label>
+        <textarea
+          id="input"
+          placeholder="Message your project. Drop files anywhere."
+          rows="1"
+          disabled
+        ></textarea>
+        <button id="send" type="submit" disabled>Send</button>
+      </div>
+      <div class="composer-hint muted">
+        ⏎ to send · ⇧⏎ for newline · drop images / PDFs / videos anywhere
+      </div>
+    </form>
+  </main>
+
+  <dialog id="add-project-dialog">
+    <form method="dialog">
+      <h2>Add project</h2>
+      <label>Name <input name="name" required pattern="[A-Za-z0-9_\-]{1,64}" /></label>
+      <label>Path <input name="path" required placeholder="/abs/path/to/project" /></label>
+      <label>Tags <input name="tags" placeholder="comma,separated,optional" /></label>
+      <label>Description <input name="description" placeholder="(optional)" /></label>
+      <menu>
+        <button value="cancel">Cancel</button>
+        <button id="add-confirm" value="confirm">Add</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <div id="drop-overlay" class="hidden">Drop to attach</div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

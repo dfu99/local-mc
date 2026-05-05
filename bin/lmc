@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""Wrapper script so `bin/lmc` works without installing the package."""
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+from lmc.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())

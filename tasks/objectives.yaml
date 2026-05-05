@@ -1,0 +1,31 @@
+# Objectives Log — Structured scientific progress tracking
+# Each completed task should be logged here as an objective.
+# The morning report reads this file to generate PI briefing slides.
+#
+# Rules:
+#   - statement: ≤20 words, clear and direct
+#   - Every objective MUST have at least one figure before completion
+#   - metrics: extract all numbers (accuracy, loss, counts, timings)
+#   - conclusions: 1-2 sentences explaining what the result means
+
+objectives: []
+
+# Example entry (uncomment and fill):
+#  - id: obj-001
+#    status: completed        # completed | in-progress | planned
+#    statement: "Measure structural backprop accuracy vs frozen baseline at width 64"
+#    methodology: >
+#      Trained CorticalNN with structural gradient routing vs frozen bio layers
+#      on MNIST for 10 epochs at width=64, depth=3.
+#    metrics:
+#      structural_accuracy: 93.6
+#      frozen_accuracy: 93.0
+#      improvement: 0.6
+#    figures:
+#      - results/structural_vs_frozen_w64.png
+#    conclusions: >
+#      Structural weights provide a modest +0.6% improvement at width 64.
+#      The gap widens with network width, suggesting structural routing
+#      matters more in larger networks.
+#    connects_to: obj-002
+#    completed_date: "2026-03-09"
