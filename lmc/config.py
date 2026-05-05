@@ -1,13 +1,17 @@
 """Filesystem layout and config loading for local-mc.
 
-By default everything lives under ``~/.local/share/lmc`` (state) and
-``~/.config/lmc`` (config). Override with the ``LMC_HOME`` env var, which
-collapses both into a single directory — handy for tests and isolated demos.
+By default everything lives under:
+  Linux/macOS  ~/.config/lmc (config) and ~/.local/share/lmc (state)
+  Windows      %APPDATA%\\lmc\\config   and  %LOCALAPPDATA%\\lmc\\data
+
+Override with the ``LMC_HOME`` env var, which collapses both into a single
+directory — handy for tests and isolated demos.
 """
 
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +21,16 @@ import yaml
 def _xdg(name: str, default: Path) -> Path:
     val = os.environ.get(name)
     return Path(val).expanduser() if val else default
+
+
+def _windows_config_root() -> Path:
+    appdata = os.environ.get("APPDATA")
+    return Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
+
+
+def _windows_state_root() -> Path:
+    localappdata = os.environ.get("LOCALAPPDATA")
+    return Path(localappdata) if localappdata else Path.home() / "AppData" / "Local"
 
 
 @dataclass(frozen=True)
@@ -66,8 +80,12 @@ def get_paths() -> Paths:
         root = Path(lmc_home).expanduser()
         return Paths(config_dir=root / "config", state_dir=root / "state")
 
-    config = _xdg("XDG_CONFIG_HOME", Path.home() / ".config") / "lmc"
-    state = _xdg("XDG_DATA_HOME", Path.home() / ".local" / "share") / "lmc"
+    if sys.platform == "win32":
+        config = _windows_config_root() / "lmc" / "config"
+        state = _windows_state_root() / "lmc" / "data"
+    else:
+        config = _xdg("XDG_CONFIG_HOME", Path.home() / ".config") / "lmc"
+        state = _xdg("XDG_DATA_HOME", Path.home() / ".local" / "share") / "lmc"
     return Paths(config_dir=config, state_dir=state)
 
 

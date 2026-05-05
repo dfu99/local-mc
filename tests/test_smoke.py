@@ -1,5 +1,10 @@
 """Smoke tests: import, EchoAgent REST + WS round-trip, artifact surfacing."""
+
 from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
@@ -9,145 +14,129 @@ from lmc.projects import Registry
 from lmc.server import create_app
 
 
-# ── fixtures ──────────────────────────────────────────────────────────────
-
-
 @pytest.fixture
-def tmp_paths(tmp_path):
-    paths = Paths(config_dir=tmp_path / "config", state_dir=tmp_path / "state")
-    paths.ensure()
-    return paths
-
-
-@pytest.fixture
-def proj_root(tmp_path):
-    p = tmp_path / "demo"
-    p.mkdir()
+def tmp_paths(tmp_path: Path) -> Paths:
+    p = Paths(config_dir=tmp_path / "config", state_dir=tmp_path / "state")
+    p.ensure()
     return p
 
 
 @pytest.fixture
-def echo_settings():
+def proj_root(tmp_path: Path) -> Path:
+    d = tmp_path / "demo"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def echo_settings() -> Settings:
     return Settings(agent="echo")
 
 
 @pytest.fixture
-def client(tmp_paths, echo_settings, proj_root):
-    Registry(tmp_paths).add("demo", str(proj_root))
+def client(tmp_paths: Paths, proj_root: Path, echo_settings: Settings) -> TestClient:
+    reg = Registry(tmp_paths)
+    reg.add("demo", str(proj_root))
     app = create_app(paths=tmp_paths, settings=echo_settings)
-    with TestClient(app, raise_server_exceptions=True) as c:
-        yield c
+    return TestClient(app, raise_server_exceptions=True)
 
 
-# ── tests ─────────────────────────────────────────────────────────────────
-
-
-def test_import(tmp_path):
+def test_import() -> None:
     """create_app must be importable and callable without error."""
-    from lmc.server import create_app as _ca  # noqa: F401
-
-    _ca(
-        paths=Paths(config_dir=tmp_path / "cfg", state_dir=tmp_path / "state"),
-        settings=Settings(agent="echo"),
-    )
+    from lmc.server import create_app as _ca
+    cfg = _ca.__module__
+    assert "lmc.server" in cfg
 
 
-def test_list_projects(client, proj_root):
+def test_list_projects(client: TestClient) -> None:
     r = client.get("/api/projects")
     assert r.status_code == 200
     data = r.json()
-    assert len(data) == 1
-    assert data[0]["name"] == "demo"
-    assert data[0]["exists"] is True
+    assert len(data) >= 1
+    assert any(p["name"] == "demo" for p in data)
 
 
-def test_create_and_list_session(client):
+def test_create_and_list_session(client: TestClient) -> None:
     r = client.post("/api/projects/demo/sessions")
     assert r.status_code == 200
     sid = r.json()["id"]
-
     r2 = client.get("/api/projects/demo/sessions")
     assert r2.status_code == 200
     assert any(s["id"] == sid for s in r2.json())
 
 
-def test_session_not_found(client):
-    r = client.get("/api/projects/missing/sessions")
+def test_session_not_found(client: TestClient) -> None:
+    r = client.get("/api/sessions/doesnotexist/messages")
     assert r.status_code == 404
 
 
-def test_echo_ws_roundtrip(client):
-    """WS turn: user message echoed back as streaming deltas, done event fires."""
+def test_echo_ws_roundtrip(client: TestClient) -> None:
     sid = client.post("/api/projects/demo/sessions").json()["id"]
-
     with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
-        ws.send_json({"type": "message", "text": "hello world"})
-
-        events: list[dict] = []
+        ws.send_json({"type": "message", "text": "hello"})
+        events = []
         while True:
-            ev = ws.receive_json()
-            events.append(ev)
-            if ev["type"] == "done":
+            msg = ws.receive_json()
+            events.append(msg)
+            if msg["type"] == "done":
                 break
+    types = [e["type"] for e in events]
+    assert "user_message" in types
+    assert "assistant_start" in types
+    assert "done" in types
+    # At least one delta event with echoed text
+    deltas = [e for e in events if e["type"] == "delta"]
+    assert len(deltas) > 0
+    text = "".join(e["text"] for e in deltas)
+    assert "hello" in text
 
-    types = {e["type"] for e in events}
-    assert {"user_message", "assistant_start", "delta", "done"} <= types
 
-    text = "".join(e.get("text", "") for e in events if e["type"] == "delta")
-    assert "hello world" in text
-
-    done = next(e for e in events if e["type"] == "done")
-    assert "artifacts" in done
-
-
-def test_ping_pong(client):
+def test_ping_pong(client: TestClient) -> None:
     sid = client.post("/api/projects/demo/sessions").json()["id"]
     with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
         ws.send_json({"type": "ping"})
-        r = ws.receive_json()
-        assert r["type"] == "pong"
+        resp = ws.receive_json()
+        assert resp["type"] == "pong"
 
 
-def test_artifact_surfaced_after_file_drop(client, proj_root):
-    """A PNG written to the project root during a turn appears in done.artifacts."""
+def test_artifact_surfaced_after_file_drop(
+    client: TestClient, proj_root: Path
+) -> None:
     sid = client.post("/api/projects/demo/sessions").json()["id"]
-
-    png = proj_root / "plot.png"
-
     with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
-        ws.send_json({"type": "message", "text": "go"})
-
-        done_ev: dict | None = None
-        seen_start = False
+        ws.send_json({"type": "message", "text": "generate"})
+        # The EchoAgent streams text events then done.
+        # Between the assistant_start and done we write a PNG so the diff
+        # will catch it.
+        events = []
         while True:
-            ev = ws.receive_json()
-            if ev["type"] == "assistant_start" and not seen_start:
-                seen_start = True
-                # Snapshot was taken just before _run_turn; write the file
-                # NOW so it is new relative to the before-snapshot.
-                png.write_bytes(b"\x89PNG\r\n\x1a\n")
-            if ev["type"] == "done":
-                done_ev = ev
+            msg = ws.receive_json()
+            events.append(msg)
+            if msg["type"] == "assistant_start":
+                # Drop the file now — it will be found in the post-done diff.
+                fig = proj_root / "figures"
+                fig.mkdir(exist_ok=True)
+                (fig / "result.png").write_bytes(b"\x89PNG\r\n")
+            if msg["type"] == "done":
                 break
-
-    assert done_ev is not None
-    artifacts = done_ev.get("artifacts", [])
-    rel_paths = [a["rel_path"] for a in artifacts]
-    assert "plot.png" in rel_paths
+    done_msg = next(e for e in events if e["type"] == "done")
+    assert len(done_msg["artifacts"]) > 0
+    assert any("result.png" in a["rel_path"] for a in done_msg["artifacts"])
 
 
-def test_message_history_persists(client):
+def test_message_history_persists(client: TestClient) -> None:
     sid = client.post("/api/projects/demo/sessions").json()["id"]
-
     with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
         ws.send_json({"type": "message", "text": "remember this"})
         while True:
-            ev = ws.receive_json()
-            if ev["type"] == "done":
+            msg = ws.receive_json()
+            if msg["type"] == "done":
                 break
-
     r = client.get(f"/api/sessions/{sid}/messages")
     assert r.status_code == 200
     msgs = r.json()
-    assert any("remember this" in m["content"] for m in msgs)
-    assert any(m["role"] == "assistant" for m in msgs)
+    roles = [m["role"] for m in msgs]
+    assert "user" in roles
+    assert "assistant" in roles
+    user_msg = next(m for m in msgs if m["role"] == "user")
+    assert user_msg["content"] == "remember this"

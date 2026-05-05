@@ -245,3 +245,8 @@ When you sit down on the new machine and want to continue:
 - 2026-05-05 — Autonomous run 1: wrote 74-test pytest suite (artifacts, projects,
   store, sessions, server smoke). All 74 pass in 2.24 s. Artifact surfacing via
   WS round-trip verified. Figure: `figures/2026-05-05-test-coverage.png`.
+- 2026-05-05 — Autonomous run 2: wrote `scripts/install.sh` (Linux/macOS) and
+  `scripts/install.ps1` (Windows). Added Windows-native path support to
+  `lmc/config.py`. Expanded `docs/migration.md` with Windows install section,
+  encoding notes (`chcp 65001`), and data-location table. All 74 tests still
+  green. Figure: `figures/2026-05-05-installer-coverage.png`.

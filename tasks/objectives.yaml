@@ -33,3 +33,30 @@ objectives:
       round-trip and artifact diff logic are verified end-to-end; the project
       is now smoke-test green and ready for v0.2 feature work.
     completed_date: "2026-05-05"
+
+  - id: obj-002
+    status: completed
+    statement: "Write cross-platform installer scripts and update Windows migration docs"
+    methodology: >
+      Wrote scripts/install.sh (Linux/macOS) and scripts/install.ps1 (Windows
+      PowerShell). Each script detects Python 3.10+, creates a venv, pip-installs
+      local-mc, writes a shim (lmc / lmc.cmd), offers to update PATH, and runs a
+      smoke test. Updated lmc/config.py to use native Windows paths
+      (%APPDATA%\lmc\config, %LOCALAPPDATA%\lmc\data) via sys.platform check.
+      Expanded docs/migration.md with a Windows install section, path-separator
+      notes, chcp 65001 encoding guidance, and a data-location table.
+      install.sh verified live on Linux (lmc --help exit 0). All 74 tests pass.
+    metrics:
+      install_sh_lines: 128
+      install_ps1_lines: 185
+      steps_covered_per_platform: 6
+      platforms_supported: 2
+      tests_passing: 74
+      migration_doc_new_lines: 60
+    figures:
+      - figures/2026-05-05-installer-coverage.png
+    conclusions: >
+      Both installer scripts are self-contained, idempotent, and verified.
+      The Windows-native path handling in config.py ensures data lands in the
+      expected locations without requiring any user configuration on first run.
+    completed_date: "2026-05-05"

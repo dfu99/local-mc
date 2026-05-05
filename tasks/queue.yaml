@@ -9,22 +9,14 @@ queue:
     completed_date: "2026-05-05"
 
   - id: q-002
-    status: pending
+    status: completed
     title: "Windows installer script (scripts/install.ps1)"
-    detail: >
-      PowerShell script: create venv at %LOCALAPPDATA%\lmc-venv, pip-install
-      the package, drop a lmc.cmd shim in %LOCALAPPDATA%\lmc-venv\Scripts\.
-      Update docs/migration.md with Windows path notes and console encoding
-      (chcp 65001 / PYTHONIOENCODING=utf-8).
-    priority: high
+    completed_date: "2026-05-05"
 
   - id: q-003
-    status: pending
+    status: completed
     title: "Linux/macOS install script (scripts/install.sh)"
-    detail: >
-      Bash script: create venv at ~/.local/lmc-venv, pip-install package,
-      drop lmc shim at ~/.local/bin/lmc, print next-step instructions.
-    priority: medium
+    completed_date: "2026-05-05"
 
   - id: q-004
     status: pending
@@ -43,3 +35,32 @@ queue:
       sessions, last activity time, latest artifact filename. Web UI polls
       or streams this for the status sidebar tab.
     priority: medium
+
+  - id: q-006
+    status: pending
+    title: "lmc batch CLI subcommand"
+    detail: >
+      Broadcast a prompt to every registered project via POST /api/projects/{name}/send.
+      Add 'batch' subcommand to lmc/cli.py: `lmc batch "message"`. Print per-project
+      results to stdout. Add tests in tests/test_cli.py (mock the HTTP calls).
+    priority: medium
+
+  - id: q-007
+    status: pending
+    title: "SQLite WAL mode + graceful WS disconnect"
+    detail: >
+      Enable WAL journal mode in lmc/store.py on DB open (PRAGMA journal_mode=WAL).
+      In lmc/server.py catch WebSocketDisconnect inside the message loop and clean
+      up the session without traceback noise. Add a test that drops the WS mid-stream
+      and confirms the server stays alive and the session is closed cleanly.
+    priority: medium
+
+  - id: q-008
+    status: pending
+    title: "Pydantic request/response validation at HTTP boundaries"
+    detail: >
+      Add Pydantic models for all POST request bodies and non-trivial JSON responses
+      in lmc/server.py. Currently the server accepts raw dicts. Use BaseModel with
+      field validation and return 422 on bad input instead of 500/silent failure.
+      Write tests verifying the 422 paths.
+    priority: low
