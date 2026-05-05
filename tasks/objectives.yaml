@@ -8,24 +8,38 @@
 #   - metrics: extract all numbers (accuracy, loss, counts, timings)
 #   - conclusions: 1-2 sentences explaining what the result means
 
-objectives: []
-
-# Example entry (uncomment and fill):
-#  - id: obj-001
-#    status: completed        # completed | in-progress | planned
-#    statement: "Measure structural backprop accuracy vs frozen baseline at width 64"
-#    methodology: >
-#      Trained CorticalNN with structural gradient routing vs frozen bio layers
-#      on MNIST for 10 epochs at width=64, depth=3.
-#    metrics:
-#      structural_accuracy: 93.6
-#      frozen_accuracy: 93.0
-#      improvement: 0.6
-#    figures:
-#      - results/structural_vs_frozen_w64.png
-#    conclusions: >
-#      Structural weights provide a modest +0.6% improvement at width 64.
-#      The gap widens with network width, suggesting structural routing
-#      matters more in larger networks.
-#    connects_to: obj-002
-#    completed_date: "2026-03-09"
+objectives:
+  - id: obj-001
+    status: completed
+    statement: "Audit local-mc scaffold; verify v0.1 actually runs end-to-end with the EchoAgent."
+    methodology: >
+      Read every module + doc. Ran the planning doc's smoke-test sequence
+      (init → add → serve → REST + WS chat) on port 8767-8770 with
+      LMC_HOME=/tmp/lmc-test and agent=echo. Tested upload, /api/files
+      sandbox (200 in-project, 403 traversal, 403 symlink-out), wheel
+      build with python -m build, and verified web/ ships in the wheel
+      despite the sketchy `../web/**/*` package-data pattern.
+    metrics:
+      python_loc_total: 1582
+      web_loc_total: 1066
+      docs_loc_total: 1182
+      modules_audited: 8
+      smoke_tests_pass: 11
+      smoke_tests_untested: 3
+      smoke_tests_absent: 1
+      tests_in_repo: 0
+      objectives_logged_before_audit: 0
+      figures_in_repo_before_audit: 0
+      git_commits: 2
+    figures:
+      - figures/audit-2026-05-05.png
+    conclusions: >
+      The planning doc undersold v0.1: it claims "scaffold only — not
+      runnable" but the code actually runs through the EchoAgent path
+      end-to-end including WebSocket streaming and sandboxed file
+      serving. The single P0 blocker is a verified ClaudeAgent turn
+      against a real `claude` binary on the Windows target machine. The
+      next 24h should produce the test suite that proves what we already
+      know works, plus the Windows install path.
+    connects_to: obj-002
+    completed_date: "2026-05-05"

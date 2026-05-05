@@ -1,0 +1,116 @@
+queue:
+- id: q01
+  status: completed
+  title: Write tests/conftest.py + tests/test_projects.py + tests/test_store.py
+  why: Audit ship-list step 1-4. Zero tests today; EchoAgent + httpx already in dev
+    deps.
+  acceptance: pytest -q passes; >=6 tests; covers Registry CRUD + Store streaming
+    append.
+  est_minutes: 45
+  started: 2026-05-05 01:24
+  completed: 2026-05-05 01:30
+  result: 23 tests pass (10 projects + 13 store) including 100-delta streaming append
+- id: q02
+  status: pending
+  title: 'tests/test_server.py: REST + sandbox + upload caps'
+  why: Audit ship-list step 6. Locks down the security-critical /api/files behavior
+    so we can't regress symlink/traversal escapes.
+  acceptance: Tests cover happy /api/projects, 400 dup project, 403 traversal, 403
+    symlink-out, 413 oversized upload.
+  est_minutes: 45
+  depends_on:
+  - q01
+- id: q03
+  status: pending
+  title: 'tests/test_chat_ws.py: WebSocket EchoAgent flow'
+  why: Audit ship-list step 7. The hottest code path; today only verified by hand.
+  acceptance: Asserts user_message → assistant_start → ≥1 delta → done in order, with
+    EchoAgent.
+  est_minutes: 30
+  depends_on:
+  - q01
+- id: q04
+  status: pending
+  title: tests/test_claude_agent.py guarded by shutil.which('claude')
+  why: Audit P0 blocker. Even skipped on this machine, it'll execute on Windows and
+    tell us what _build_argv breaks.
+  acceptance: 'If claude is on PATH: one real turn produces text + done events. If
+    not: pytest skips, doesn''t fail.'
+  est_minutes: 30
+- id: q05
+  status: pending
+  title: .github/workflows/test.yml — Linux + Windows matrix
+  why: Audit P1. Catches Windows-specific regressions on every PR; deploy target is
+    Windows.
+  acceptance: Workflow runs pytest on ubuntu-latest + windows-latest with Python 3.10,
+    3.11, 3.12.
+  est_minutes: 30
+  depends_on:
+  - q03
+- id: q06
+  status: pending
+  title: Drop the dead watchfiles dep + thread settings.artifact_globs through server.py
+  why: Audit Drop list. Reduces audit surface and stops Settings.artifact_globs from
+    being a lie.
+  acceptance: watchfiles removed from pyproject.toml/requirements.txt; server.py:329
+    passes globs from settings.
+  est_minutes: 15
+- id: q07
+  status: pending
+  title: Move web/ inside the package as lmc/web/, update create_app web_dir resolution
+  why: Audit Drop list. Replaces the `..`-escaping package-data pattern with something
+    that's portable across Linux/Windows wheel builds.
+  acceptance: python -m build --wheel produces a wheel with lmc/web/{index.html,app.js,style.css};
+    server resolves it via importlib.resources or __file__.
+  est_minutes: 30
+- id: q08
+  status: pending
+  title: scripts/install.ps1 — Windows install script
+  why: Audit P1. Deploy target is Windows; pipx may not be present on locked-down
+    work machines.
+  acceptance: PS1 creates venv under %LOCALAPPDATA%\lmc-venv, installs ., drops lmc.cmd
+    shim, prints next steps.
+  est_minutes: 30
+- id: q09
+  status: pending
+  title: lmc send <project> "msg" CLI subcommand
+  why: Smallest piece of v0.2. Mirrors `mc send` and unblocks scripted workflows on
+    the new machine.
+  acceptance: lmc send demo 'hello' POSTs to the active session; round-trips through
+    the EchoAgent in a test.
+  est_minutes: 45
+  depends_on:
+  - q03
+- id: q10
+  status: pending
+  title: GET /status — minimal status panel HTML
+  why: v0.2.0 milestone. Even read-only, it's the visible payoff for switching from
+    tmux.
+  acceptance: /status returns HTML listing each project + most recent session timestamp;
+    lists projects with idle > 1h in red.
+  est_minutes: 60
+- id: q11
+  status: pending
+  title: WebSocket cancel + auto-reconnect
+  why: Audit §8 brittleness. Without cancel, a runaway turn means killing the server.
+  acceptance: 'Client sends {type: cancel}; server SIGTERMs the subprocess; client
+    auto-reconnects with exponential backoff.'
+  est_minutes: 60
+- id: q12
+  status: pending
+  title: Vendor a small markdown renderer (snarkdown or marked)
+  why: Audit §8. Today's hand-rolled renderer skips tables/lists/headers; agents emit
+    those constantly.
+  acceptance: web/markdown.js is a vendored, MIT-licensed file <2KB; renders tables
+    and bulleted lists in the chat.
+  est_minutes: 30
+- id: q13
+  status: completed
+  title: Append the audit objective to tasks/objectives.yaml
+  why: 'Global CLAUDE.md mandate: every completed objective gets a yaml entry + a
+    figure.'
+  acceptance: obj-001 entry referencing figures/audit-2026-05-05.png with metrics
+    (loc=1582, tests=0, smoke=11/15 green).
+  est_minutes: 10
+  completed: 2026-05-05 01:22
+  result: obj-001 logged with the audit figure

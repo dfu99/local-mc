@@ -32,13 +32,13 @@ Bundling: should be installable as a single command (`pipx install .` from
 the cloned repo, eventually `pipx install local-mc` from PyPI). Distribution
 is the cloned repo + an installer, not a pre-built binary.
 
-## v0.1 — Chat interface (scaffolded, not finished)
+## v0.1 — Chat interface (smoke-tested green; tests starting)
 
 The minimum thing that makes the product useful: open a browser, see a list
 of projects, talk to one, drop in a PDF, watch a plot it generates render
 inline.
 
-### Done (scaffold on disk)
+### Done (verified 2026-05-05)
 
 - Directory layout, `pyproject.toml`, `requirements.txt`, `.gitignore`.
 - `lmc/config.py` — XDG config/state paths; `Settings` dataclass.
@@ -55,24 +55,34 @@ inline.
 - `web/index.html`, `web/style.css`, `web/app.js` — single-page UI:
   project sidebar, chat panel, attachment tray, drag-drop, inline image /
   video / PDF rendering, markdown rendering for messages.
+- **Smoke test passes end-to-end with `agent: echo`.** REST + WS chat work;
+  uploads land in `<proj>/inbox/<sid>/`; `/api/files` returns 200 in-project,
+  403 on `/etc/passwd`, 403 on `/proj/../../etc/passwd`, and 403 on a symlink
+  pointing outside. `python -m build --wheel` succeeds and bundles `web/`.
+  See `tasks/audit-2026-05-05.md` for the matrix.
+- **`tests/test_projects.py` (10 tests) + `tests/test_store.py` (13 tests)
+  green** — Registry CRUD, duplicate detection, missing-path rejection,
+  session round-trips, cascade-delete, 100-delta streaming append.
 
-### Not done
+### Not done (P0/P1 from audit 2026-05-05)
 
-- **No tests written.** No CI. No verification that a real `claude` invocation
-  produces the expected stream-json events with the flag combination chosen.
-  This is the highest-risk unknown — the `--input-format stream-json` flag
-  was specified blind. Verify against the installed Claude Code on the
-  target machine before assuming it works.
-- **The package was never `pip install`-ed.** Imports may fail in subtle
-  ways once installed (relative imports inside `lmc.server` reference
-  `lmc.artifacts as artifacts_mod`, etc.). Run a smoke test:
-  `python -c "from lmc.server import create_app; create_app()"`.
-- **No first-run wizard.** Adding a project requires either the CLI or the
-  `+` button in the sidebar; there's no guided setup.
-- **Auth.** The server binds to `127.0.0.1` and that's it. If the user wants
-  to use it from another machine on the same LAN (e.g. corporate laptop on
-  Wi-Fi), there's no auth. Decision deferred — see Open Questions.
-- **No daemon mode / autostart.** Has to be launched manually.
+- **(P0) Real `claude` turn never run.** The `--input-format stream-json`
+  flag combination is still unverified against the installed binary.
+  Audit-blocker; see `tasks/queue.yaml#q04`.
+- **(P0) Windows install path untested.** Deploy target is a Windows work
+  machine; nothing in the smoke test ran on Windows.
+  See `tasks/queue.yaml#q05` and `q08`.
+- **(P1) No FastAPI route tests / WS tests.** `q02`, `q03` in queue.
+- **(P1) `bin/lmc` is POSIX-only.** Need a `lmc.cmd` shim. `q08`.
+- **(P2) No first-run wizard.** Adding a project requires either the CLI
+  or the `+` button in the sidebar; no guided setup.
+- **(P2) Auth.** Server binds 127.0.0.1 only. If user wants LAN access
+  (corporate laptop on Wi-Fi), there's no token auth. Decision deferred.
+- **(P3) No daemon / autostart.** Manual launch only.
+- **(audit drop-list) `watchfiles` dep is dead** (never imported); the
+  `package-data = lmc = ["../web/**/*"]` pattern works but is sketchy on
+  Windows; `Settings.artifact_globs` is set but never plumbed through to
+  the server's `snapshot()` call. See `q06`, `q07`.
 
 ### How to verify v0.1 (when you resume)
 
@@ -241,4 +251,12 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
-- 2026-05-05 — Initial scaffold + planning (this commit).
+- 2026-05-05 01:30 — q01: tests/test_projects.py (10) + tests/test_store.py
+  (13) green; covers Registry CRUD + Store streaming append (100-delta).
+- 2026-05-05 01:22 — Audit (`tasks/audit-2026-05-05.md`,
+  `figures/audit-2026-05-05.png`); seeded `tasks/queue.yaml` (q01–q13);
+  logged obj-001 in `tasks/objectives.yaml`. Headline finding: v0.1 is
+  *runnable*, not the "scaffold-only / not runnable" the prior version of
+  this file claimed. Single biggest blocker is verified `claude` turn on
+  Windows.
+- 2026-05-05 — Initial scaffold + planning.
