@@ -251,6 +251,25 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-10 14:35 — q10: `GET /status` ships read-only HTML panel; one
+  row per registered project with session id8, last-active UTC, humanized
+  idle. Idle > 1 h gets `class=stale` (red). `_humanize_idle` covers
+  `0s` → `Nd Nh`. New `tests/test_status.py` (7 cases) covers HTML basics,
+  no-session marker, active-session idle bucket, 2 h backdate → stale,
+  multi-project count, HTML escape on forged `<script>` name, parametric
+  humanize. Also reset stale q11/q12 markers in `tasks/queue.yaml` —
+  neither had any actual code (no cancel/reconnect, no `lmc/web/markdown.js`).
+  Suite: **74 passing.**
+- 2026-05-05 02:02 — q09: `lmc send <project> "msg"` CLI subcommand.
+  Streams agent text to stdout, then `[done]` line; `--quiet` suppresses
+  streaming. 6 tests in `tests/test_cli_send.py` (round-trip, quiet,
+  unknown project → 1, missing path → 1, persists to SQLite, reuses
+  latest session). Suite: 67 passing.
+- 2026-05-05 01:58 — q07+q08: `web/` relocated inside the package as
+  `lmc/web/`; `pyproject.toml` package-data uses `lmc = ["web/*", "web/**/*"]`;
+  fresh wheel bundles assets. `scripts/install.ps1` (Windows) creates
+  `%LOCALAPPDATA%\lmc-venv`, drops `lmc.cmd` shim. POSIX twin in
+  `scripts/install.sh`.
 - 2026-05-05 01:50 — q06: dropped `watchfiles` dep (was unused) and
   threaded `Settings.artifact_globs` through both `snapshot()` and
   `diff()` in `lmc/server.py`. New test pins it: set globs to

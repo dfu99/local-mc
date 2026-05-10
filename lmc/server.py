@@ -396,6 +396,77 @@ def create_app(
             except Exception:
                 pass
 
+    # ── /status — minimal project status panel ──────────────────────
+
+    @app.get("/status")
+    def status_panel():
+        """Read-only HTML view: every project + its latest session.
+
+        Mirrors `mc status` from the original Mission Control. Projects
+        with idle time > 1 hour are flagged red so the operator can spot
+        sessions that need attention. Self-contained HTML — no JS, no
+        external CSS — so it can be wget'd or curl'd for scripted alerts.
+        """
+        from datetime import datetime, timezone
+        from html import escape
+
+        from fastapi.responses import HTMLResponse
+
+        idle_red_seconds = 60 * 60
+        now = time.time()
+        rows: list[str] = []
+        for proj in registry.load():
+            sess = store.latest_session(proj.name)
+            tags = ", ".join(proj.tags) if proj.tags else ""
+            if sess is None:
+                rows.append(
+                    f"<tr class='no-session'>"
+                    f"<td>{escape(proj.name)}</td>"
+                    f"<td>{escape(proj.path)}</td>"
+                    f"<td>{escape(tags)}</td>"
+                    f"<td>—</td><td>(no session)</td><td>—</td></tr>"
+                )
+                continue
+            idle = now - sess.last_active_at
+            klass = "stale" if idle > idle_red_seconds else "active"
+            last_active = datetime.fromtimestamp(
+                sess.last_active_at, tz=timezone.utc
+            ).strftime("%Y-%m-%d %H:%M:%SZ")
+            idle_human = _humanize_idle(idle)
+            rows.append(
+                f"<tr class='{klass}'>"
+                f"<td>{escape(proj.name)}</td>"
+                f"<td>{escape(proj.path)}</td>"
+                f"<td>{escape(tags)}</td>"
+                f"<td>{escape(sess.id[:8])}</td>"
+                f"<td>{last_active}</td>"
+                f"<td>{idle_human}</td></tr>"
+            )
+
+        body = (
+            "<!doctype html><html><head><meta charset='utf-8'>"
+            "<title>local-mc status</title>"
+            "<style>"
+            "body{font-family:system-ui,sans-serif;margin:24px;}"
+            "table{border-collapse:collapse;width:100%;}"
+            "th,td{padding:6px 12px;border-bottom:1px solid #ddd;text-align:left;}"
+            "th{background:#f5f5f5;}"
+            "tr.stale{background:#fff0f0;color:#8a1f1f;}"
+            "tr.no-session{color:#888;}"
+            "code{font-size:90%;}"
+            "</style></head><body>"
+            "<h1>local-mc status</h1>"
+            f"<p>{len(rows)} project(s) — refreshed at "
+            f"{datetime.fromtimestamp(now, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%SZ')}. "
+            "Rows in red are idle > 1 h.</p>"
+            "<table><thead><tr>"
+            "<th>Project</th><th>Path</th><th>Tags</th><th>Session</th>"
+            "<th>Last active</th><th>Idle</th>"
+            "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+            "</body></html>"
+        )
+        return HTMLResponse(body)
+
     # ── Static frontend ─────────────────────────────────────────────
 
     if web_dir.is_dir():
@@ -454,6 +525,21 @@ def _msg_to_dict(m) -> dict:
         "artifacts": m.artifacts,
         "created_at": m.created_at,
     }
+
+
+def _humanize_idle(seconds: float) -> str:
+    """Render idle seconds as `12s` / `4m` / `2h 13m` / `1d 4h`."""
+    s = int(seconds)
+    if s < 60:
+        return f"{s}s"
+    m, s = divmod(s, 60)
+    if m < 60:
+        return f"{m}m"
+    h, m = divmod(m, 60)
+    if h < 24:
+        return f"{h}h {m}m"
+    d, h = divmod(h, 24)
+    return f"{d}d {h}h"
 
 
 def _safe_filename(name: str) -> str:

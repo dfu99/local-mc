@@ -125,12 +125,12 @@ queue:
   - q03
   started: 2026-05-05 01:41
   completed: 2026-05-05 02:02
-  result: lmc/cli.py adds `_cmd_send` (asyncio.run on agent.stream, latest-or-new session,
-    streams text to stdout, [done] line); --quiet suppresses streaming. tests/test_cli_send.py
+  result: lmc/cli.py adds `_cmd_send` (asyncio.run on agent.stream, latest-or-new
+    session, streams text to stdout, [done] line); --quiet suppresses streaming. tests/test_cli_send.py
     has 6 cases (echo round-trip, --quiet, unknown project → 1, missing path → 1,
     persists to SQLite, subsequent calls reuse latest session). Suite total now 61.
 - id: q10
-  status: in_progress
+  status: completed
   title: GET /status — minimal status panel HTML
   why: v0.2.0 milestone. Even read-only, it's the visible payoff for switching from
     tmux.
@@ -138,6 +138,13 @@ queue:
     lists projects with idle > 1h in red.
   est_minutes: 60
   started: 2026-05-05 01:42
+  completed: 2026-05-10 14:35
+  result: 'lmc/server.py adds GET /status: HTMLResponse with table of every registered
+    project + its latest session (id8, last-active UTC timestamp, humanized idle).
+    Stale rows (idle > 1h) get class=stale → red background. _humanize_idle helper
+    handles 0s..Nd. tests/test_status.py: 7 cases (HTML basics, no-session marker,
+    active session shows idle/sid, 2h backdate flips to stale, multi-project count,
+    HTML escape on forged <script> name, parametric humanize). Suite total: 74 passing.'
 - id: q11
   status: pending
   title: WebSocket cancel + auto-reconnect
@@ -145,6 +152,8 @@ queue:
   acceptance: 'Client sends {type: cancel}; server SIGTERMs the subprocess; client
     auto-reconnects with exponential backoff.'
   est_minutes: 60
+  notes: 'Earlier completion marker was stale — no cancel/reconnect code in lmc/server.py
+    or lmc/web/app.js as of 2026-05-10. Reset to pending.'
 - id: q12
   status: pending
   title: Vendor a small markdown renderer (snarkdown or marked)
@@ -153,6 +162,8 @@ queue:
   acceptance: web/markdown.js is a vendored, MIT-licensed file <2KB; renders tables
     and bulleted lists in the chat.
   est_minutes: 30
+  notes: 'Earlier in_progress marker was stale — no lmc/web/markdown.js exists as
+    of 2026-05-10. Reset to pending.'
 - id: q13
   status: completed
   title: Append the audit objective to tasks/objectives.yaml
