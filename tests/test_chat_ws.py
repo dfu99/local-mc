@@ -143,6 +143,110 @@ def test_unknown_event_type_returns_error(client: TestClient, project_dir: Path)
         assert "expected" in ev["message"]
 
 
+def test_cancel_stops_a_running_turn(client: TestClient, project_dir: Path):
+    """`{type:cancel}` aborts the agent stream and the client gets `cancelled`.
+
+    EchoAgent paces ~one delta per 10 ms. A 200-word message takes ~2 s, so
+    a cancel sent right after `assistant_start` should land before the stream
+    drains naturally. We assert: a `cancelled` event lands, *no* `done` event
+    lands, and fewer than 200 deltas streamed before the cancel took effect.
+    """
+    sid = _create_session(client, project_dir)
+    long_text = " ".join([f"w{i}" for i in range(200)])
+    with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
+        ws.send_json({"type": "message", "text": long_text})
+        first = ws.receive_json()
+        second = ws.receive_json()
+        assert first["type"] == "user_message"
+        assert second["type"] == "assistant_start"
+        ws.send_json({"type": "cancel"})
+
+        events: list[dict] = []
+        for _ in range(400):
+            ev = ws.receive_json()
+            events.append(ev)
+            if ev["type"] in ("cancelled", "done", "error"):
+                break
+
+    types = [e["type"] for e in events]
+    assert "cancelled" in types
+    assert "done" not in types
+    assert types.count("delta") < 200
+
+
+def test_cancel_with_no_active_turn_is_a_no_op(
+    client: TestClient, project_dir: Path
+):
+    """A spurious cancel must not break the socket or wedge the loop."""
+    sid = _create_session(client, project_dir)
+    with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
+        ws.send_json({"type": "cancel"})
+        # Socket should still be alive — verify with a ping/pong round-trip.
+        ws.send_json({"type": "ping"})
+        ev = ws.receive_json()
+        assert ev == {"type": "pong"}
+
+
+def test_message_during_active_turn_is_rejected(
+    client: TestClient, project_dir: Path
+):
+    """Server refuses a second message while one is mid-flight.
+
+    Locks down a small but real footgun: if the client double-clicks Send,
+    we'd otherwise spawn two competing tasks that both write to the socket.
+    """
+    sid = _create_session(client, project_dir)
+    long_text = " ".join([f"w{i}" for i in range(80)])
+    with client.websocket_connect(f"/api/sessions/{sid}/chat") as ws:
+        ws.send_json({"type": "message", "text": long_text})
+        ws.receive_json()  # user_message
+        ws.receive_json()  # assistant_start
+        ws.send_json({"type": "message", "text": "second"})
+        # The "in progress" error arrives before the next delta — but we're
+        # tolerant in case scheduling lets a delta sneak in.
+        for _ in range(20):
+            ev = ws.receive_json()
+            if ev.get("type") == "error":
+                assert "in progress" in ev["message"]
+                break
+        else:
+            raise AssertionError("expected an 'in progress' error")
+        # Cancel to free the turn so the WS context manager doesn't hang.
+        ws.send_json({"type": "cancel"})
+        for _ in range(400):
+            ev = ws.receive_json()
+            if ev["type"] in ("cancelled", "done"):
+                break
+
+
+def test_client_app_js_has_cancel_and_reconnect_wiring():
+    """Structural pin so a future refactor can't silently strip these.
+
+    The browser side has no unit-test harness; this is a cheap canary
+    that the cancel + reconnect logic survives an app.js rewrite. If
+    the names change, update both ends so the contract stays intact.
+    """
+    from pathlib import Path
+
+    js = Path(__file__).resolve().parents[1] / "lmc" / "web" / "app.js"
+    src = js.read_text()
+    assert "cancelTurn" in src, "cancel handler missing from app.js"
+    assert '"cancel"' in src, 'cancel must be sent as {"type":"cancel"}'
+    assert "reconnectAttempts" in src, "reconnect bookkeeping missing"
+    assert "RECONNECT_DELAY_MS" in src, "exponential backoff schedule missing"
+    assert "userClosedSocket" in src, "intentional-close guard missing"
+
+
+def test_client_index_html_has_cancel_button():
+    from pathlib import Path
+
+    html = Path(__file__).resolve().parents[1] / "lmc" / "web" / "index.html"
+    src = html.read_text()
+    assert 'id="cancel"' in src
+    # Default-hidden so it doesn't sit empty next to Send when idle.
+    assert 'id="cancel" type="button" hidden' in src
+
+
 def test_settings_artifact_globs_filter_done_artifacts(
     project_dir: Path, lmc_paths
 ):

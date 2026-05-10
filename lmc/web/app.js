@@ -11,7 +11,16 @@ const state = {
   ws: null,
   staged: [],                 // [{filename, path, mime, size}]
   streamingMessageId: null,
+  // Reconnect bookkeeping. `userClosedSocket` flips when we deliberately
+  // close (e.g. switching sessions) so the close handler doesn't loop.
+  reconnectAttempts: 0,
+  reconnectTimer: null,
+  userClosedSocket: false,
 };
+
+// Exponential backoff schedule (ms). Capped at 30 s. Picked to feel
+// responsive on a momentary blip but not hammer a server that's down.
+const RECONNECT_DELAY_MS = (n) => Math.min(30000, 500 * Math.pow(2, Math.min(n, 6)));
 
 // ── API ────────────────────────────────────────────────────────────────
 
@@ -217,9 +226,28 @@ function openSocket(sid) {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${proto}//${location.host}/api/sessions/${sid}/chat`);
   state.ws = ws;
+  state.userClosedSocket = false;
 
-  ws.addEventListener("open", () => setConnection("connected"));
-  ws.addEventListener("close", () => setConnection("disconnected"));
+  ws.addEventListener("open", () => {
+    setConnection("connected");
+    state.reconnectAttempts = 0;
+  });
+  ws.addEventListener("close", () => {
+    setConnection("disconnected");
+    setStreamingUI(false);
+    // If we're switching sessions or projects, don't try to reconnect —
+    // openSession already kicks off the new socket. Only reconnect when
+    // the close was unsolicited (server crash, laptop sleep, network blip).
+    if (state.userClosedSocket) return;
+    if (!state.activeSession || state.activeSession.id !== sid) return;
+    const delay = RECONNECT_DELAY_MS(state.reconnectAttempts);
+    state.reconnectAttempts++;
+    setConnection(`reconnecting in ${Math.round(delay / 1000)}s…`);
+    clearTimeout(state.reconnectTimer);
+    state.reconnectTimer = setTimeout(() => {
+      if (state.activeSession?.id === sid) openSocket(sid);
+    }, delay);
+  });
   ws.addEventListener("error", () => setConnection("error"));
 
   ws.addEventListener("message", (ev) => {
@@ -230,10 +258,20 @@ function openSocket(sid) {
 }
 
 function closeSocket() {
+  state.userClosedSocket = true;
+  clearTimeout(state.reconnectTimer);
+  state.reconnectTimer = null;
+  state.reconnectAttempts = 0;
   if (state.ws && state.ws.readyState <= 1) {
     state.ws.close();
   }
   state.ws = null;
+}
+
+function cancelTurn() {
+  if (state.ws?.readyState !== 1) return;
+  if (state.streamingMessageId === null) return;
+  state.ws.send(JSON.stringify({ type: "cancel" }));
 }
 
 function handleEvent(ev) {
@@ -242,6 +280,7 @@ function handleEvent(ev) {
     scrollToBottom();
   } else if (ev.type === "assistant_start") {
     state.streamingMessageId = ev.message_id;
+    setStreamingUI(true);
     const placeholder = renderMessage({
       id: ev.message_id,
       role: "assistant",
@@ -277,7 +316,19 @@ function handleEvent(ev) {
       msg.appendChild(renderAttachments(ev.artifacts, "New / changed files"));
     }
     state.streamingMessageId = null;
+    setStreamingUI(false);
     scrollToBottom();
+  } else if (ev.type === "cancelled") {
+    const msg = document.querySelector(`.msg[data-id="${ev.message_id}"]`);
+    if (msg) {
+      msg.classList.add("cancelled");
+      const e = document.createElement("div");
+      e.className = "tool-call";
+      e.textContent = "[cancelled]";
+      msg.appendChild(e);
+    }
+    state.streamingMessageId = null;
+    setStreamingUI(false);
   } else if (ev.type === "error") {
     const msg = document.querySelector(`.msg[data-id="${ev.message_id}"]`);
     if (msg) {
@@ -289,6 +340,19 @@ function handleEvent(ev) {
     } else {
       console.error("error:", ev.message);
     }
+  }
+}
+
+function setStreamingUI(streaming) {
+  const send = $("#send");
+  const cancel = $("#cancel");
+  if (!cancel) return;
+  if (streaming) {
+    send?.setAttribute("hidden", "");
+    cancel.removeAttribute("hidden");
+  } else {
+    send?.removeAttribute("hidden");
+    cancel.setAttribute("hidden", "");
   }
 }
 
@@ -474,6 +538,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#composer").addEventListener("submit", async (e) => {
     e.preventDefault();
     await sendMessage();
+  });
+
+  $("#cancel")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    cancelTurn();
   });
 
   const ta = $("#input");

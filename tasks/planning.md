@@ -251,6 +251,17 @@ When you sit down on the new machine and want to continue:
 
 ## Recently completed
 
+- 2026-05-10 14:55 — q11: WebSocket cancel + client auto-reconnect.
+  `chat_ws` runs each turn as an `asyncio.Task` so the receive loop can
+  see a `{type:"cancel"}` mid-stream; cancelling the task propagates
+  `CancelledError` into the agent generator, and `ClaudeAgent.stream`'s
+  finally-block now `terminate()`s the subprocess (with a 2 s grace,
+  then `kill()`). Server emits `{type:"cancelled", message_id:N}`. A
+  second `message` while a turn runs is rejected with a clear error.
+  Client (`lmc/web/app.js`): `cancelTurn()` wired to a red Cancel button
+  that shows only while streaming; auto-reconnect on unexpected close
+  uses 500 ms × 2^n backoff (cap 30 s) and skips intentional closes
+  (session swap). 5 new tests; suite **79 passing.**
 - 2026-05-10 14:35 — q10: `GET /status` ships read-only HTML panel; one
   row per registered project with session id8, last-active UTC, humanized
   idle. Idle > 1 h gets `class=stale` (red). `_humanize_idle` covers

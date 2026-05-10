@@ -363,6 +363,26 @@ body {
 }
 #send:disabled { opacity: 0.5; cursor: not-allowed; }
 
+#cancel {
+  background: #b00020;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+#cancel:hover { background: #8a0019; }
+#cancel[hidden] { display: none; }
+
+.msg.cancelled { opacity: 0.7; }
+.msg.cancelled .msg-content::after {
+  content: "  ↩ stopped";
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
 .composer-hint {
   font-size: 11px;
   margin-top: 6px;

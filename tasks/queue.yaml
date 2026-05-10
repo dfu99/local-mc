@@ -146,14 +146,25 @@ queue:
     active session shows idle/sid, 2h backdate flips to stale, multi-project count,
     HTML escape on forged <script> name, parametric humanize). Suite total: 74 passing.'
 - id: q11
-  status: pending
+  status: completed
   title: WebSocket cancel + auto-reconnect
   why: Audit §8 brittleness. Without cancel, a runaway turn means killing the server.
   acceptance: 'Client sends {type: cancel}; server SIGTERMs the subprocess; client
     auto-reconnects with exponential backoff.'
   est_minutes: 60
-  notes: 'Earlier completion marker was stale — no cancel/reconnect code in lmc/server.py
-    or lmc/web/app.js as of 2026-05-10. Reset to pending.'
+  started: 2026-05-10 10:36
+  completed: 2026-05-10 14:55
+  result: 'lmc/server.py: chat_ws now spawns each turn as an asyncio.Task so the
+    receive loop stays live. {type:cancel} cancels the task → propagates CancelledError
+    into the agent stream → ClaudeAgent.stream finally-block terminates the subprocess
+    (term, then kill after 2s). Server emits {type:cancelled, message_id:N}; second
+    {type:message} mid-turn is rejected with a clear error. lmc/web/app.js: cancelTurn()
+    sends {type:cancel}; auto-reconnect on unexpected close uses exponential backoff
+    (500ms × 2^n, capped 30s) and bails out only when userClosedSocket is true (clean
+    session swap). lmc/web/index.html: red Cancel button next to Send, hidden until
+    streaming starts. tests/test_chat_ws.py +5 cases (cancel stops a 200-word echo,
+    cancel-with-no-turn is a no-op, message-during-turn is rejected, app.js has
+    cancelTurn+reconnect wiring, index.html has cancel button). Suite total: 79 passing.'
 - id: q12
   status: pending
   title: Vendor a small markdown renderer (snarkdown or marked)
@@ -162,8 +173,8 @@ queue:
   acceptance: web/markdown.js is a vendored, MIT-licensed file <2KB; renders tables
     and bulleted lists in the chat.
   est_minutes: 30
-  notes: 'Earlier in_progress marker was stale — no lmc/web/markdown.js exists as
-    of 2026-05-10. Reset to pending.'
+  notes: Earlier in_progress marker was stale — no lmc/web/markdown.js exists as of
+    2026-05-10. Reset to pending.
 - id: q13
   status: completed
   title: Append the audit objective to tasks/objectives.yaml

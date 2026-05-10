@@ -114,31 +114,49 @@ class ClaudeAgent:
         )
         assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
 
-        # Send the user message as a single stream-json event, then close stdin.
-        user_event = {
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": [{"type": "text", "text": prompt_text}],
-            },
-        }
         try:
-            proc.stdin.write((json.dumps(user_event) + "\n").encode())
-            await proc.stdin.drain()
-            proc.stdin.close()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+            # Send the user message as a single stream-json event, then close stdin.
+            user_event = {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt_text}],
+                },
+            }
+            try:
+                proc.stdin.write((json.dumps(user_event) + "\n").encode())
+                await proc.stdin.drain()
+                proc.stdin.close()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
-        async for ev in self._read_stream(proc):
-            yield ev
+            async for ev in self._read_stream(proc):
+                yield ev
 
-        rc = await proc.wait()
-        if rc != 0:
-            stderr = (await proc.stderr.read()).decode(errors="replace")
-            yield AgentEvent(
-                type="error",
-                data={"message": f"claude exited with code {rc}: {stderr[:500]}"},
-            )
+            rc = await proc.wait()
+            if rc != 0:
+                stderr = (await proc.stderr.read()).decode(errors="replace")
+                yield AgentEvent(
+                    type="error",
+                    data={"message": f"claude exited with code {rc}: {stderr[:500]}"},
+                )
+        finally:
+            # If the consumer cancelled mid-stream (q11 cancel button), the
+            # subprocess is still alive. Terminate it before we unwind so
+            # we don't leak a zombie claude on every cancel.
+            if proc.returncode is None:
+                try:
+                    proc.terminate()
+                except ProcessLookupError:
+                    pass
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    try:
+                        proc.kill()
+                    except ProcessLookupError:
+                        pass
+                    await proc.wait()
 
     async def _read_stream(
         self, proc: asyncio.subprocess.Process

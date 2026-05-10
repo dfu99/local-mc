@@ -18,6 +18,7 @@ root, to prevent the browser from reading arbitrary files.
 
 from __future__ import annotations
 
+import asyncio
 import mimetypes
 import os
 import time
@@ -297,23 +298,19 @@ def create_app(
             return
 
         agent = make_agent(resolved_settings)
+        # Track the in-flight turn so a {"type": "cancel"} from the client
+        # can stop it. Holding it on the closure (not module state) keeps
+        # cancels scoped to this WS connection — disconnecting one tab
+        # doesn't kill another tab's turn.
+        current_turn: asyncio.Task | None = None
 
-        try:
-            while True:
-                payload = await ws.receive_json()
-                if payload.get("type") == "ping":
-                    await ws.send_json({"type": "pong"})
-                    continue
-                if payload.get("type") != "message":
-                    await ws.send_json(
-                        {"type": "error", "message": "expected type=message"}
-                    )
-                    continue
+        async def run_turn(payload: dict) -> None:
+            user_text = payload.get("text", "")
+            attachments = payload.get("attachments", []) or []
+            attachment_paths = [a.get("path") for a in attachments if a.get("path")]
 
-                user_text = payload.get("text", "")
-                attachments = payload.get("attachments", []) or []
-                attachment_paths = [a.get("path") for a in attachments if a.get("path")]
-
+            assistant_msg = None
+            try:
                 user_msg = store.add_message(
                     sid, "user", user_text, attachments=attachments
                 )
@@ -323,21 +320,22 @@ def create_app(
 
                 assistant_msg = store.add_message(sid, "assistant", "")
                 await ws.send_json(
-                    {
-                        "type": "assistant_start",
-                        "message_id": assistant_msg.id,
-                    }
+                    {"type": "assistant_start", "message_id": assistant_msg.id}
                 )
 
                 snap = artifacts_mod.snapshot(
                     proj.path, globs=resolved_settings.artifact_globs
                 )
 
+                # Re-fetch session so we pick up any claude_session_id written
+                # by a previous turn on the same socket.
+                turn_sess = store.get_session(sid) or sess
+
                 async for ev in _run_turn(
                     agent,
                     user_text,
                     proj=proj,
-                    sess=sess,
+                    sess=turn_sess,
                     store=store,
                     attachment_paths=attachment_paths,
                 ):
@@ -388,7 +386,67 @@ def create_app(
                                 "message": ev.data.get("message", "agent error"),
                             }
                         )
+            except asyncio.CancelledError:
+                # Surface the cancel back to the client so it can flip its
+                # streaming UI off. Best-effort — if the socket is already
+                # gone, silently swallow.
+                if assistant_msg is not None:
+                    try:
+                        await ws.send_json(
+                            {
+                                "type": "cancelled",
+                                "message_id": assistant_msg.id,
+                            }
+                        )
+                    except Exception:
+                        pass
+                raise
+
+        try:
+            while True:
+                payload = await ws.receive_json()
+                kind = payload.get("type")
+
+                if kind == "ping":
+                    await ws.send_json({"type": "pong"})
+                    continue
+
+                if kind == "cancel":
+                    if current_turn and not current_turn.done():
+                        current_turn.cancel()
+                        try:
+                            await current_turn
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception:
+                            pass
+                    # else: idle — cancel is a no-op so the client can spam it
+                    # without a server round-trip, matches mc steer's idempotency.
+                    continue
+
+                if kind != "message":
+                    await ws.send_json(
+                        {"type": "error", "message": "expected type=message"}
+                    )
+                    continue
+
+                if current_turn and not current_turn.done():
+                    await ws.send_json(
+                        {
+                            "type": "error",
+                            "message": "turn already in progress; send cancel first",
+                        }
+                    )
+                    continue
+
+                current_turn = asyncio.create_task(run_turn(payload))
         except WebSocketDisconnect:
+            if current_turn and not current_turn.done():
+                current_turn.cancel()
+                try:
+                    await current_turn
+                except (asyncio.CancelledError, Exception):
+                    pass
             return
         except Exception as e:  # pragma: no cover - defensive
             try:
