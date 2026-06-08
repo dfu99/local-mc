@@ -48,23 +48,87 @@ tar czf lmc-backup-$(date +%F).tgz \
   work)
 - Git
 
-### Install
+### Install — Linux / macOS
 
 ```bash
 git clone git@github.com:dfu99/local-mc.git
 cd local-mc
 
-# Option A: pipx (preferred — isolated, single command for upgrades)
+# Option A: one-shot installer (recommended — handles venv + shim)
+bash scripts/install.sh
+# then open a new terminal so ~/.local/bin is on PATH
+
+# Option B: pipx (when pipx is available)
 pipx install .
 
-# Option B: pip + venv (when pipx isn't available)
+# Option C: pip + venv (manual)
 python3 -m venv ~/.local/lmc-venv
 source ~/.local/lmc-venv/bin/activate
 pip install -e .
 
-# Option C: no install at all — run from the checkout
+# Option D: no install at all — run from the checkout
 ./bin/lmc --help
 ```
+
+### Install — Windows
+
+Requirements: Python 3.10+ on PATH (from [python.org](https://python.org) or the
+Microsoft Store), Git.
+
+```powershell
+git clone https://github.com/dfu99/local-mc.git
+cd local-mc
+
+# Allow unsigned scripts for this process only:
+Set-ExecutionPolicy -Scope Process Bypass
+
+# Run the installer:
+.\scripts\install.ps1
+```
+
+The script creates `%LOCALAPPDATA%\lmc-venv`, installs the package into it,
+and writes a `lmc.cmd` shim to `%LOCALAPPDATA%\lmc-venv\Scripts\`.
+It will offer to add that directory to your user `PATH` automatically.
+
+If you want a fresh install later:
+
+```powershell
+.\scripts\install.ps1 -Reinstall
+```
+
+#### Windows-specific notes
+
+**Path separators.** All path handling in the Python code uses `pathlib.Path`,
+so forward/back-slash differences are handled automatically. When registering a
+project from the command line, either separator works:
+
+```cmd
+lmc add myproj C:\Users\you\projects\myproj
+lmc add myproj C:/Users/you/projects/myproj
+```
+
+**Console encoding.** The `lmc.cmd` shim sets `PYTHONIOENCODING=utf-8` so
+log output and chat text render correctly in Windows Terminal and PowerShell.
+If you run `lmc` from legacy `cmd.exe`, first run `chcp 65001` to switch the
+console to UTF-8; otherwise non-ASCII characters in file paths or messages may
+be garbled.
+
+**Data locations on Windows.** The XDG paths used on Linux/macOS are
+replaced with Windows equivalents:
+
+| Purpose | Windows path |
+|---------|-------------|
+| Config  | `%APPDATA%\lmc\config\` |
+| State   | `%LOCALAPPDATA%\lmc\data\` |
+| DB      | `%LOCALAPPDATA%\lmc\data\lmc.db` |
+
+**No WSL required.** local-mc runs natively under Windows Python.
+You do NOT need WSL, Cygwin, or MSYS2.
+
+**Claude Code on Windows.** The `ClaudeAgent` backend shells out to the
+`claude` binary. Install Claude Code for Windows separately and make sure
+`claude` is on your PATH before switching from `agent: echo` to
+`agent: claude`.
 
 ### Configure
 
